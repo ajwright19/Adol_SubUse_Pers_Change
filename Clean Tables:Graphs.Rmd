@@ -1,0 +1,1441 @@
+---
+title: "Clean Drugs Tables and Figures"
+author: "Amanda Wright"
+date: "6/29/2020"
+output: html_document
+---
+
+# Propensity Score Weighting
+## Individual Balance Tables for Raw & Matched Effect Sizes
+```{r}
+# only code for general substance use is shown here - did the same thing for all other substances
+
+# this table shows matched variables
+matched.tab <- nested.psw.table %>% 
+   filter(match_set == "socialization") %>%
+   unnest(matched) %>% 
+   group_by(var) %>%
+  filter(var != "distance") %>%
+   summarize(mean = mean(`Std. Mean Diff.`, na.rm = T))
+
+
+ kable(matched.tab, "html", longtable = T, booktabs = T, digits = 2,
+       caption = "Matched Variables after Propensity Score Weighting") %>%
+   kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  scroll_box(width = "750px", height = "400px")
+ 
+ 
+ 
+# this table shows raw variables
+raw.tab.gen <- nested.psw.table %>% 
+   filter(match_set == "socialization") %>%
+   unnest(raw) %>% 
+   group_by(var) %>% 
+   filter(var != "distance") %>%
+   summarize(mean = mean(`Std. Mean Diff.`, na.rm = T)) %>%
+
+ kable(raw.tab, "html", longtable = T, booktabs = T, digits = 2,
+       caption = "Raw Variables in Propensity Score Weighting") %>%
+   kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  scroll_box(width = "750px", height = "400px")
+ 
+ 
+ 
+ # this table shows variables that are not matched after weighting
+unbal.tab <- nested.psw.table %>% 
+  filter(match_set == "socialization") %>%
+  unnest(unbal.tab) %>% 
+  group_by(var) %>% 
+  filter(var != "distance") %>%
+   summarize(mean = mean(`Std. Mean Diff.`, na.rm = T))
+     
+
+kable(unbal.tab, "html", longtable = T, booktabs = T,
+       caption = "Unbalanced Variables after Propensity Score Weighting") %>%
+  kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+ 
+
+
+ 
+# this table shows variables that were already matched prior to weighting
+smalldiff.tab <- nested.psw.table %>%  
+  filter(match_set == "socialization") %>%
+  unnest(smalldiff.tab, .drop = T) %>% 
+  group_by(var) %>% 
+  filter(var != "distance") %>%
+   summarize(mean = mean(`Std. Mean Diff.`, na.rm = T))
+     
+
+kable(smalldiff.tab, "html", # "latex", 
+      longtable = T, booktabs = T,
+      caption = "Balanced Variables after Propensity Score Weighting") %>%
+  # kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+  kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  scroll_box(width = "750px", height = "400px")
+```
+## All Together Raw & Matched Effect Sizes
+```{r}
+# each matching variable by itself
+## raw effect sizes are the same code - just "raw" instead of "matched"
+
+matched.tab.gen <- matched.tab.gen %>%
+  rename(`General Substance Use` = mean)
+
+matched.tab.alc <- matched.tab.alc %>%
+  rename(Alcohol = mean)
+
+matched.tab.cig <- matched.tab.cig %>%
+  rename(Cigarette = mean)
+
+matched.tab.coke <- matched.tab.coke %>%
+  rename(Cocaine = mean)
+
+matched.tab.halluc <- matched.tab.halluc %>%
+  rename(Hallucinogen = mean)
+
+matched.tab.mar <- matched.tab.mar %>%
+  rename(Marijuana = mean)
+
+matched.tab.SH <- matched.tab.SH %>%
+  rename(Inhalant = mean)
+
+matched.tab.UD <- matched.tab.UD %>%
+  rename(Downer = mean)
+
+
+## combine into one dataframe & get rid of duplicate columns
+
+all.matched.tab <- cbind(matched.tab.gen, matched.tab.alc, matched.tab.cig, matched.tab.coke, matched.tab.halluc, matched.tab.mar, matched.tab.SH, matched.tab.UD)
+
+all.matched.tab <- all.matched.tab[-24, c(1:2, 4,6,8,10,12,14,16)]
+
+all.matched.tab <- all.matched.tab %>%
+  rename(Variable = var)
+
+
+## for substances with smaller user samples, not all matching variables had enough data to be weighted, change the -Inf results to NA
+
+all.matched.tab[mapply(is.infinite, all.matched.tab)] <- NA
+
+rownames(all.matched.tab) <- NULL
+
+
+ kable(all.matched.tab, "html", longtable = T, booktabs = T, digits = 2,
+       caption = "<strong>Table xx</strong><br><em>Effect Size Differences for Users and Non-Users on Matching Variables After Propensity Score Weighting.</em>", 
+       align = c("l", "c", "c", "c", "c", "c", "c", "c", "c"),
+       col.names = c("Variable", "General", "Alcohol", "Cigarettes", "Cocaine", "Hallucinogens", "Marijuana", "Inhalants", "Downers")) %>%
+   kable_styling(full_width = F) %>%
+    add_header_above(c("", "Type of Substance User and Non-User" = 8)) 
+ 
+
+ 
+ 
+# average effect size across all matching variables for each substance user vs non-user group
+## for matched variables, it is "matched" instead of "raw"
+ 
+raw.tab.gen <- nested.psw.table %>% 
+   filter(match_set == "socialization") %>%
+   unnest(raw) %>% 
+   group_by(var) %>% 
+   filter(var != "distance") %>% # get rid of the variable with the average propensity score weight
+   summarize(mean = mean(`Std. Mean Diff.`, na.rm = T)) %>%
+   rename(`General Substance` = mean) 
+ 
+PSW_all_gen <- cbind(raw.tab.gen, matched.tab.gen)
+PSW_all_alc <- cbind(raw.tab.alc, matched.tab.alc)
+PSW_all_cig <- cbind(raw.tab.cig, matched.tab.cig)
+PSW_all_coke <- cbind(raw.tab.coke, matched.tab.coke)
+PSW_all_halluc <- cbind(raw.tab.halluc, matched.tab.halluc)
+PSW_all_mar <- cbind(raw.tab.mar, matched.tab.mar)
+PSW_all_SH <- cbind(raw.tab.SH, matched.tab.SH)
+PSW_all_UD <- cbind(raw.tab.UD, matched.tab.UD)
+
+PSW_all <- rbind(PSW_all_gen, PSW_all_alc, PSW_all_cig, PSW_all_coke, PSW_all_halluc, PSW_all_mar, PSW_all_SH, PSW_all_UD)
+
+rownames(PSW_all) <- c("General Substance Use", "Alcohol", "Cigarettes", "Cocaine", "Hallucinogens", "Marijuana", "Inhalants", "Downers")
+
+
+kable(PSW_all, "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("Pre-Weighting", "Post-Weighting"),
+          caption = "<strong>Table 2</strong><br><em>Average Effect Size Differences for Users and Non-Users on Matching Variables Before and After Propensity Score Weighting</em>", align = "c") %>%
+  # kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+    kable_styling(bootstrap_options = c("repeat_header", "condensed"),full_width = F) %>%
+  add_header_above(c(" ", "Average Effect Size (d)" = 2)) %>%
+  column_spec(2, width = "20em") %>%
+  column_spec(3, width = "20em") %>%
+        footnote(general = "d = Cohen's d.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic"))
+ 
+```
+
+
+# Piecewise Models
+## Individual Model Tables
+```{r}
+# only general substance use is shown as an example
+
+gen_impls_res <- tidy(PW_gen_imp, effects = ("fixed"), conf.int = T, conf.level = 0.95)[,c(2:3,5:7)]
+gen_SS_res <- tidy(PW_gen_SS, effects = ("fixed"), conf.int = T, conf.level = 0.95)[,c(2:3,5:7)]
+gen_dep_res <- tidy(PW_gen_dep, effects = ("fixed"), conf.int = T, conf.level = 0.95)[,c(2:3,5:7)]
+gen_SE_res <- tidy(PW_gen_SE, effects = ("fixed"), conf.int = T, conf.level = 0.95)[,c(2:3,5:7)]
+
+gen_res <- rbind(gen_impls_res, gen_SS_res, gen_dep_res, gen_SE_res)
+
+
+# bolding significant values - did this for every individual model's dataframe
+
+gen_res <- gen_res %>%
+  mutate(CI = sprintf("[%.2f, %.2f]", conf.low, conf.high)) %>%
+  select(-conf.low, -conf.high) %>%
+  mutate(estimate = ifelse(abs(estimate) < 1, round(estimate, digits = 2), round(estimate, digits = 2))) %>%
+  mutate_at(vars(estimate, CI), ~ifelse(abs(statistic) > 1.96, sprintf("<strong>%s</strong>", .), .))
+      
+
+gen_res %>%
+  mutate(CI = sprintf("[%.2f, %.2f]", conf.low, conf.high)) %>%
+  select(term, estimate, CI) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2,
+  col.names = c( "Term", "Estimate", "CI"),
+  caption = "General genstance Use") %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("Impulsivity", 1, 6) %>%
+  pack_rows("Sensation-Seeking", 7, 12) %>%
+  pack_rows("Depression", 13, 17) %>%
+  pack_rows("Self-Esteem", 18, 22)
+```
+## All Together Model Tables
+```{r}
+# combine all bolded dataframes and only include the Estimate & CI columns
+
+PW_table <- cbind(gen_res[,c(-3)], alc_res[,c(2,4)], cig_res[,c(2,4)], coke_res[,c(2,4)], halluc_res[,c(2,4)], mar_res[,c(2,4)], SH_res[,c(2,4)], UD_res[,c(2,4)])
+
+
+PW_table %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("Model", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI"),
+  caption = "<strong>Table xx</strong><br><em>Piecewise Growth Model Estimates for Personality Trajectories of Users Across the Periods of Initiation</em>") %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("Impulsivity", 1, 6) %>%
+  pack_rows("Sensation-Seeking", 7, 12) %>%
+  pack_rows("Depression", 13, 17) %>%
+  pack_rows("Self-Esteem", 18, 22) %>%
+  add_header_above(c(" ", "General Substance Use" = 2, "Alcohol" = 2, "Cigarettes" = 2, "Cocaine" = 2, "Hallucinogens" = 2, "Marijuana" = 2, "Inhalants" = 2, "Downers" = 2)) %>%
+  column_spec(1, width = "20em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(3, width = "10em", border_right = T) %>%
+  column_spec(4, width = "10em") %>%
+  column_spec(5, width = "10em", border_right = T) %>%
+  column_spec(6, width = "10em") %>%
+  column_spec(7, width = "10em", border_right = T) %>%
+  column_spec(8, width = "10em") %>%
+  column_spec(9, width = "10em", border_right = T) %>%
+  column_spec(10, width = "10em") %>%
+  column_spec(11, width = "10em", border_right = T) %>%
+  column_spec(12, width = "10em") %>%
+  column_spec(13, width = "10em", border_right = T) %>%
+  column_spec(14, width = "10em") %>%
+  column_spec(15, width = "10em", border_right = T) %>%
+  column_spec(16, width = "10em") %>%
+  column_spec(17, width = "10em") %>%
+  footnote(general = "CI = 95% confidence interval. Bold values indicate significance.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+```
+## Individual Contrast Tables
+```{r}
+# only general substance use is here as an example - did this same thing for all of the 8 groupings
+
+
+## make contrast matrices - depression and self-esteem didn't have an interaction term so their matrix is different
+
+region_matrix <- matrix(c(0,1,1,0,1,0,  0,1,0,0,1,0, 0,1,0,0,0,0), nrow = 3, ncol = 6, byrow = TRUE)
+rownames(region_matrix) <- c("Start of Initiation Period vs End of Initiation Period", "Pre-Initiation Slope vs Initiation Period Slope", "Initiation Period Slope vs Post-Initiation Slope")
+
+
+sm_region_matrix <- matrix(c(0,1,1,0,0, 0,1,0,0,0), nrow = 2, ncol = 5, byrow = TRUE)
+rownames(sm_region_matrix) <- c("Start of Initiation Period vs End of Initiation Period", "Initiation Period Slope vs Pre- and Post-Initiation Slopes")
+
+
+
+# get estimates & CIs
+
+
+gen_impls_glht <- confint(summary(multcomp::glht(PW_gen_imp, linfct = region_matrix, alternative = "two.sided", calpha = multcomp::univariate_calpha())))
+gen_impls_glht <- gen_imp_glht$confint %>% data.frame() %>% mutate(CI = sprintf("[%.2f, %.2f]", lwr, upr)) %>% select(-lwr, -upr)
+
+gen_SS_glht <- confint(summary(multcomp::glht(PW_gen_SS, linfct = region_matrix, alternative = "two.sided", calpha = multcomp::univariate_calpha())))
+gen_SS_glht <- gen_SS_glht$confint %>% data.frame() %>% mutate(CI = sprintf("[%.2f, %.2f]", lwr, upr)) %>% select(-lwr, -upr)
+
+gen_dep_glht <- confint(summary(multcomp::glht(PW_gen_dep, linfct = sm_region_matrix, alternative = "two.sided")))
+gen_dep_glht <- gen_dep_glht$confint %>% data.frame() %>% mutate(CI = sprintf("[%.2f, %.2f]", lwr, upr)) %>% select(-lwr, -upr)
+
+gen_SE_glht <- confint(summary(multcomp::glht(PW_gen_SE, linfct = sm_region_matrix, alternative = "two.sided")))
+gen_SE_glht <- gen_SE_glht$confint %>% data.frame() %>% mutate(CI = sprintf("[%.2f, %.2f]", lwr, upr)) %>% select(-lwr, -upr)
+
+
+
+# combine into one dataframe
+gen_glht <- rbind(gen_impls_glht, gen_SS_glht, gen_dep_glht, gen_SE_glht)
+
+
+# label rows to easily bold significant values
+row_names <- c("1","2","3","4","5","6","7","8","9","10")
+gen_glht <- cbind(row_names,gen_glht)
+
+
+# bold significant values
+
+gen_glht <- gen_glht %>%
+ mutate(Estimate = round(Estimate, digits = 2)) %>%
+  mutate_at(vars(Estimate, CI), ~ifelse(row_names == "1" | row_names == "3"| row_names == "4" | row_names == "6", sprintf("<strong>%s</strong>", .), .))
+  
+
+  
+gen_glht %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2,
+  #col.names = c("Estimate", "CI"),
+  caption = "General Substance Use") %>%
+  kable_styling("striped", full_width = F) %>%
+  pack_rows("Impulsivity", 1, 3) %>%
+  pack_rows("Sensation-Seeking", 4, 6) %>%
+  pack_rows("Depression", 7, 8) %>%
+  pack_rows("Self-Esteem", 9, 10)
+
+```
+## All Together Contrast Tables
+```{r}
+# combine all individual contrast dataframes & get rid of duplicated columns
+
+all_sub_glht <- cbind(sub_glht, alc_glht, cig_glht, coke_glht, halluc_glht, mar_glht, SH_glht, UD_glht)
+
+all_sub_glht <- all_sub_glht[c(1:7,9),c(2,3,5,6,8,9,11,12,14,15,17,18,20,21,23,24)]
+
+
+# label the rows for the contrasts
+region_names <- c("Difference in Average Levels Across the Initiation Period", "Pre-Initiation vs Initiation Period Slope", "Initiation Period vs Post-Initiation Slope", "Difference in Average Levels Across the Initiation Period", "Pre-Initiation vs Initiation Period Slope", "Initiation Period vs Post-Initiation Slope", "Difference in Average Levels Across the Initiation Period", "Difference in Average Levels Across the Initiation Period")
+
+all_sub_glht <- cbind(region_names, all_sub_glht)
+
+row.names(all_sub_glht) <- NULL
+
+
+
+all_sub_glht %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI"),
+  caption = "<strong>Table 7</strong><br><em>Piecewise Model Contrasts for Pre-Initiation, Initiation Period, and Post-Initiation Estimates</em>") %>%
+  kable_styling(full_width = F) %>%  
+  pack_rows("Impulsivity", 1, 3) %>%
+  pack_rows("Sensation-Seeking", 4, 6) %>%
+  pack_rows("Depression", 7,7) %>%
+  pack_rows("Self-Esteem", 8,8) %>%
+  add_header_above(c(" ", "General Substance Use" = 2, "Alcohol" = 2, "Cigarettes" = 2, "Cocaine" = 2, "Hallucinogens" = 2, "Marijuana" = 2, "Inhalants" = 2, "Downers" = 2)) %>%
+  column_spec(1, width = "40em") %>%
+  column_spec(2, width = "6em") %>%
+  column_spec(3, width = "10em", border_right = T) %>%
+  column_spec(4, width = "6em") %>%
+  column_spec(5, width = "10em", border_right = T) %>%
+  column_spec(6, width = "6em") %>%
+  column_spec(7, width = "10em", border_right = T) %>%
+  column_spec(8, width = "6em") %>%
+  column_spec(9, width = "10em", border_right = T) %>%
+  column_spec(10, width = "6em") %>%
+  column_spec(11, width = "10em", border_right = T) %>%
+  column_spec(12, width = "6em") %>%
+  column_spec(13, width = "10em", border_right = T) %>%
+  column_spec(14, width = "6em") %>%
+  column_spec(15, width = "10em", border_right = T) %>%
+  column_spec(16, width = "6em") %>%
+  column_spec(17, width = "10em") %>%
+    footnote(general = "CI = 95% confidence interval. Bold values indicate significance.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+```
+## Graphs
+```{r}
+# general substance only as an example
+
+
+## get two dataframes for pre- and post-initiation responses
+
+pre_gen <- new_PW_data[which(new_PW_data$cen_ageI_2 <= 0), ]
+post_gen <- new_PW_data[which(new_PW_data$cen_ageI_2 > 0), ]
+
+
+## impls
+
+### impls & SS have same amount of data/responses, were first measured at age 10 so can go back further from average time of initiation than dep and SE can
+
+plot_pre_gen_IS <- with(pre_gen, data.frame(cen_ageI_2 = seq(-3, 0, .05), PostInit = 0, cen_ageI = seq(-8, -2, .1), GMC_ageI = 0))
+plot_post_gen_IS <- with(post_gen, data.frame(cen_ageI_2 = seq(1, 5, .05), PostInit = 1, cen_ageI = seq(0, 8, .1), GMC_ageI = 0))
+
+plot_pre_gen_IS$PostInit <- as.factor(plot_pre_gen_IS$PostInit)
+plot_post_gen_IS$PostInit <- as.factor(plot_post_gen_IS$PostInit)
+
+
+### get new values
+
+predict_pre_gen_imp <- predict(PW_gen_imp, type = "response", newdata = plot_pre_gen_IS, allow.new.levels = TRUE, re.form = NA)
+predict_post_gen_imp <- predict(PW_gen_imp, type = "response", newdata = plot_post_gen_IS, allow.new.levels = TRUE, re.form = NA)
+
+predict_pre_gen_imp <- cbind(plot_pre_gen_IS, predict_pre_gen_imp)
+predict_post_gen_imp <- cbind(plot_post_gen_IS, predict_post_gen_imp)
+
+
+plot_pw_gen_imp <-ggplot(new_PW_data, aes(x = cen_ageI, y = Impls)) + geom_line(data = predict_pre_gen_imp,aes(x = cen_ageI, y = predict_pre_gen_imp), color = "black", size = 1, linetype = 1,na.rm = TRUE) + geom_line(data = predict_post_gen_imp, aes(x = cen_ageI, y = predict_post_gen_imp),color = "black", size = 1, linetype = 1, na.rm = TRUE) + geom_segment(x = -2, y = (fixef(PW_gen_imp)[1]), xend = 0, yend = (fixef(PW_gen_imp)[1] + fixef(PW_gen_imp)[2] + fixef(PW_gen_imp)[3] + fixef(PW_gen_imp)[5]), color = "black", size = .5, linetype = 2) + theme_bw() + scale_x_continuous(breaks = c(seq(-8, 8, 2))) + scale_y_continuous(breaks = c(seq(2, 3, .2))) + coord_cartesian(xlim = c(-8, 8), ylim = c(2, 3)) + ggtitle("Change in Impulsivity after General Substance Initiation") + geom_vline(xintercept = 0, color = "black", size = 1, linetype = 3) + geom_vline(xintercept = -2, color = "black", size = 1, linetype = 3) + xlab("Years Since Initiation") + ylab("Impulsivity") + theme(plot.title = element_text(face = "bold", size = 14, hjust = .5), axis.text = element_text(face = "bold", size = 11, hjust = .5), axis.title = element_text(face = "bold", size = 11, hjust = .5)) + annotate("text", x = -5.28, y = 2.9, label = "italic(Pre-Initiation)", size = 5, parse = T) + annotate("text", x = 5, y = 2.9, label = "italic(Post-Initiation)", size = 5, parse = T) + annotate("text", x = -1, y = 2.1, label = "Initiation\nPeriod", size = 3.1) + annotate("rect", xmin = -2, xmax = 0, ymin = 2, ymax = 3, alpha = .2)
+
+print(plot_pw_gen_imp)
+
+
+
+## SS 
+
+predict_pre_gen_SS <- predict(PW_gen_SS, type = "response", newdata = plot_pre_gen_IS, allow.new.levels = TRUE, re.form = NA)
+predict_post_gen_SS <- predict(PW_gen_SS, type = "response", newdata = plot_post_gen_IS, allow.new.levels = TRUE, re.form = NA)
+
+predict_pre_gen_SS <- cbind(plot_pre_gen_IS, predict_pre_gen_SS)
+predict_post_gen_SS <- cbind(plot_post_gen_IS, predict_post_gen_SS)
+
+
+plot_pw_gen_SS <- ggplot(new_PW_data, aes(x = cen_ageI, y = SensSeek)) + geom_line(data = predict_pre_gen_SS,aes(x = cen_ageI, y = predict_pre_gen_SS), color = "black", size = 1, linetype = 1,na.rm = TRUE) + geom_line(data = predict_post_gen_SS, aes(x = cen_ageI, y = predict_post_gen_SS),color = "black", size = 1, linetype = 1, na.rm = TRUE) + geom_segment(x = -2, y = (fixef(PW_gen_SS)[1]), xend = 0, yend = (fixef(PW_gen_SS)[1] + fixef(PW_gen_SS)[2] + fixef(PW_gen_SS)[3] + fixef(PW_gen_SS)[5]), color = "black", size = .5, linetype = 2) + theme_bw() + scale_x_continuous(breaks = c(seq(-8, 8, 2))) + scale_y_continuous(breaks = c(seq(2, 3, .2))) + coord_cartesian(xlim = c(-8, 8), ylim = c(2, 3)) + ggtitle("Change in Sensation-Seeking after General Substance Initiation") + geom_vline(xintercept = 0, color = "black", size = 1, linetype = 3) + geom_vline(xintercept = -2, color = "black", size = 1, linetype = 3) + xlab("Years Since Initiation") + ylab("Sensation-Seeking") + theme(plot.title = element_text(face = "bold", size = 14, hjust = .5), axis.text = element_text(face = "bold", size = 11, hjust = .5), axis.title = element_text(face = "bold", size = 11, hjust = .5)) + annotate("text", x = -5.2, y = 2.9, label = "italic(Pre-Initiation)", size = 5, parse = T) + annotate("text", x = 5, y = 2.9, label = "italic(Post-Initiation)", size = 5, parse = T) + annotate("text", x = -1, y = 2.1, label = "Initiation\nPeriod", size = 3.1) + annotate("rect", xmin = -2, xmax = 0, ymin = 2, ymax = 3, alpha = .2)
+
+print(plot_pw_gen_SS)
+
+
+
+## dep 
+
+### assessments of depression and self-esteem didn't start until age 14 so there are less data available for the pre-initiation time compared to impulsivity and sensation-seeking, so the range of years is shorter in these graphs for that reason
+
+
+plot_pre_gen_DS <- with(pre_gen, data.frame(cen_ageI_2 = seq(-1, 0, .05), PostInit = 0, cen_ageI = seq(-4, -2, .1), GMC_ageI = 0))
+plot_post_gen_DS <- with(post_gen, data.frame(cen_ageI_2 = seq(1, 5, .05), PostInit = 1, cen_ageI = seq(0, 8, .1), GMC_ageI = 0))
+
+plot_pre_gen_DS$PostInit <- as.factor(plot_pre_gen_DS$PostInit)
+plot_post_gen_DS$PostInit <- as.factor(plot_post_gen_DS$PostInit)
+
+predict_pre_gen_dep <- predict(PW_gen_dep, type = "response", newdata = plot_pre_gen_DS, allow.new.levels = TRUE, re.form = NA)
+predict_post_gen_dep <- predict(PW_gen_dep, type = "response", newdata = plot_post_gen_DS, allow.new.levels = TRUE, re.form = NA)
+
+predict_pre_gen_dep <- cbind(plot_pre_gen_DS, predict_pre_gen_dep)
+predict_post_gen_dep <- cbind(plot_post_gen_DS, predict_post_gen_dep)
+
+
+plot_pw_gen_dep <- ggplot(new_PW_data, aes(x = cen_ageI, y = CESD)) + geom_line(data = predict_pre_gen_dep,aes(x = cen_ageI, y = predict_pre_gen_dep), color = "black", size = 1, linetype = 1,na.rm = TRUE) + geom_line(data = predict_post_gen_dep, aes(x = cen_ageI, y = predict_post_gen_dep),color = "black", size = 1, linetype = 1, na.rm = TRUE) + geom_segment(x = -2, y = (fixef(PW_gen_dep)[1]), xend = 0, yend = (fixef(PW_gen_dep)[1] + fixef(PW_gen_dep)[2] + fixef(PW_gen_dep)[3]), color = "black", size = .5, linetype = 2) + scale_x_continuous(breaks = c(seq(-6, 8, 2))) + scale_y_continuous(breaks = c(seq(0, 1, .2))) + coord_cartesian(xlim = c(-6, 8), ylim = c(0, 1)) + ggtitle("Change in Depression after General Substance Initiation") + ylab("Depression") + xlab("Years Since Initiation") + geom_vline(xintercept = 0, color = "black", size = 1, linetype = 3) + geom_vline(xintercept = -2, color = "black", size = 1, linetype = 3) + theme_bw() + theme(plot.title = element_text(face = "bold", size = 14, hjust = .5), axis.text = element_text(face = "bold", size = 11, hjust = .5), axis.title = element_text(face = "bold", size = 11, hjust = .5)) + annotate("text", x = -4.25, y = .2, label = "italic(Pre-Initiation)", size = 4, parse = T) + annotate("text", x = 4, y = .2, label = "italic(Post-Initiation)", size = 4, parse = T) + annotate("text", x = -1, y = .1, label = "Initiation\nPeriod", size = 3.7) + annotate("rect", xmin = -2, xmax = 0, ymin = 0, ymax = 1, alpha = .2)
+
+print(plot_pw_gen_dep)
+
+
+
+
+## SE 
+
+predict_pre_gen_SE <- predict(PW_gen_SE, type = "response", newdata = plot_pre_gen_DS, allow.new.levels = TRUE, re.form = NA)
+predict_post_gen_SE <- predict(PW_gen_SE, type = "response", newdata = plot_post_gen_DS, allow.new.levels = TRUE, re.form = NA)
+
+predict_pre_gen_SE <- cbind(plot_pre_gen_DS, predict_pre_gen_SE)
+predict_post_gen_SE <- cbind(plot_post_gen_DS, predict_post_gen_SE)
+
+
+plot_pw_gen_SE <- ggplot(new_PW_data, aes(x = cen_ageI, y = SelfEstm)) + geom_line(data = predict_pre_gen_SE,aes(x = cen_ageI, y = predict_pre_gen_SE), color = "black", size = 1, linetype = 1,na.rm = TRUE) + geom_line(data = predict_post_gen_SE, aes(x = cen_ageI, y = predict_post_gen_SE),color = "black", size = 1, linetype = 1, na.rm = TRUE) + geom_segment(x = -2, y = (fixef(PW_gen_SE)[1]), xend = 0, yend = (fixef(PW_gen_SE)[1] + fixef(PW_gen_SE)[2] + fixef(PW_gen_SE)[3]), color = "black", size = .5, linetype = 2) + scale_x_continuous(breaks = c(seq(-6, 8, 2))) + scale_y_continuous(breaks = c(seq(2.5, 3.5, .2))) + coord_cartesian(xlim = c(-6, 8), ylim = c(2.5, 3.5)) + ggtitle("Change in Self-Esteem after General Substance Initiation") + ylab("Self-Esteem") + xlab("Years Since Initiation") + geom_vline(xintercept = 0, color = "black", size = 1, linetype = 3) + geom_vline(xintercept = -2, color = "black", size = 1, linetype = 3) + theme_bw() + theme(plot.title = element_text(face = "bold", size = 14, hjust = .5), axis.text = element_text(face = "bold", size = 11, hjust = .5), axis.title = element_text(face = "bold", size = 11, hjust = .5)) + annotate("text", x = -4.25, y = 2.7, label = "italic(Pre-Initiation)", size = 4.2, parse = T) + annotate("text", x = 4.75, y = 2.7, label = "italic(Post-Initiation)", size = 4.2, parse = T) + annotate("text", x = -1, y = 2.6, label = "Initiation\nPeriod", size = 3.7) + annotate("rect", xmin = -2, xmax = 0, ymin = 2.5, ymax = 3.5, alpha = .2)
+
+print(plot_pw_gen_SE)
+
+
+
+
+# putting them all together in a grid
+
+PW_gen <- (plot_pw_gen_SS | plot_pw_gen_SS )/(plot_pw_gen_dep | plot_pw_gen_SE) + plot_annotation(title = 'Supplementary Figure 9: Changes in Personality Trajectories across the Periods of Initiation for General Substance Users', caption = 'Supplementary Figure 9. Graphs depicting the changes in personality trajectories of general substance users across Pre-Initiation, the Initiation Period, and Post-Initiation.', tag_levels = c('A'), tag_suffix = ':', theme = theme(plot.title = element_text(size = 18, hjust = 0.5), plot.caption = element_text(size = 11, hjust = 0), plot.tag.position = c(0, 1), plot.tag = element_text(size = 5, hjust = 0, vjust = 0)))
+
+
+```
+
+
+# Selection Analyses
+## Individual Substance Tables for Odds Ratios
+```{r}
+nested.sel.gen <- nested.sel.gen %>%
+  mutate(pool = map(sel.mod, possibly(sel_pool_fun, NA_real_)))
+
+traits <- tibble(
+  old = c("SensSeek", "Impls", "CESD", "SelfEstm"),
+  new = c("Sensation-Seeking", "Impulsivity", "Depression", "Self-Esteem"),
+  breaks = c("Sensation-\nSeeking", "Impulsivity", "Depression", "Self-\nEsteem")
+)
+
+
+sel.tab.gen <- nested.sel.gen %>%
+  select(-sel.mod) %>%
+  unnest(pool) %>% 
+  mutate(sig = ifelse(sign(CI.lower) == sign(CI.upper), "sig", "ns")) %>%
+  mutate(Trait = plyr::mapvalues(Trait, traits$old, traits$breaks),
+         Trait = factor(Trait, levels = traits$breaks)) %>%
+  mutate_at(vars(Estimate, CI.lower, CI.upper), funs(exp)) %>%
+  filter(term == "value") %>%
+  mutate(term = "GenSub")
+
+
+sel.tab.gen %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2,
+  caption = "Uppers/Downers") %>%
+  kable_styling("striped", full_width = F) %>%
+  add_header_above(c(" ", "Impulsivity" = 2, "Sensation-Seeking" = 2, "Depression" = 2, "Self-Esteem" = 2))
+```
+## All Together Odds Ratios
+```{r}
+# repeat for each substance to bold significant values
+
+sel.tab.gen <- sel.tab.gen %>%
+  mutate(CI = sprintf("[%.2f, %.2f]", CI.lower, CI.upper)) %>%
+  mutate(Estimate = round(Estimate, digits = 2)) %>%
+  mutate_at(vars(Estimate,CI), ~ifelse(sig == "sig", sprintf("<strong>%s</strong>", .), .)) %>%
+  select(Trait, weight, Estimate, CI) 
+
+
+sel.tab.alc <- sel.tab.alc %>%
+  select(Estimate, CI)
+
+sel.tab.cig <- sel.tab.cig %>%
+  select(Estimate, CI) 
+
+sel.tab.coke <- sel.tab.coke %>%
+  select(Estimate, CI) 
+
+sel.tab.halluc <- sel.tab.halluc %>%
+  select(Estimate, CI) 
+
+sel.tab.mar <- sel.tab.mar %>%
+  select(Estimate, CI)
+
+sel.tab.SH <- sel.tab.SH %>%
+  select(Estimate, CI) 
+
+sel.tab.UD <- sel.tab.UD %>%
+  select(Estimate, CI) 
+
+
+# combine into one dataframe
+
+sel.tab.table_bold <- cbind(sel.tab.gen, sel.tab.alc, sel.tab.cig, sel.tab.coke, sel.tab.halluc, sel.tab.mar, sel.tab.SH, sel.tab.UD)
+
+rownames(sel.tab.table_bold) <- NULL
+
+sel.tab.table_bold %>%
+kable(., "html", escape = F, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c","c", "c"),
+  caption = "<strong>Table 3</strong><br><em>Odds (OR) of Future Substance Use Based on Age 14 Personality</em>",
+  col.names = c("Model", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI", "Estimate", "CI")) %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("Impulsivity", 1, 2) %>%
+  pack_rows("Sensation-Seeking", 3, 4) %>%
+  pack_rows("Depression", 5, 6) %>%
+  pack_rows("Self-Esteem", 7, 8) %>%
+  add_header_above(c(" ", "General Substance Use" = 2, "Alcohol" = 2, "Cigarettes" = 2, "Cocaine" = 2, "Hallucinogens" = 2, "Marijuana" = 2, "Inhalants" = 2, "Downers" = 2)) %>%
+  column_spec(1, border_right = T, width = "18em") %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, border_right = T, width = "10em") %>%
+  column_spec(4, width = "8em") %>%
+  column_spec(5, border_right = T, width = "10em") %>%
+  column_spec(6, width = "8em") %>%
+  column_spec(7, border_right = T, width = "10em") %>%
+  column_spec(8, width = "8em") %>%
+  column_spec(9, border_right = T, width = "10em") %>%
+  column_spec(10, width = "8em") %>%
+  column_spec(11, border_right = T, width = "10em") %>%
+  column_spec(12, width = "8em") %>%
+  column_spec(13, border_right = T, width = "10em") %>%
+  column_spec(14, width = "8em") %>%
+  column_spec(15, border_right = T, width = "10em") %>%
+  column_spec(16, width = "8em") %>%
+  column_spec(17, width = "10em") %>%
+        footnote(general = "OR = odds ratio. CI = 95% confidence interval. Bold values indicate significance.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+```
+## Figures
+```{r}
+sel.tab.gen %>% 
+  filter(weight == "weighted") %>%
+  ggplot(aes(x = term, y = Estimate)) +
+    scale_color_manual(values = c("springgreen3", "blue")) +
+    geom_hline(aes(yintercept = exp(0)), linetype = "dashed") +
+    geom_errorbar(aes(ymin = CI.lower, ymax = CI.upper), width = .2, size = .75) +
+    geom_point(aes(color = term), size = 4) +
+    labs(y = "Odds", x = NULL) +
+    facet_grid(.~Trait, scale = "free") +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(face = "bold", size = rel(1.2)),
+          axis.text.x = element_text(face = "bold", size = rel(1.2), hjust = 1, angle = 45),
+          axis.title = element_text(face = "bold", size = rel(1.2)),
+          strip.text = element_text(face = "bold", size = rel(1.2)))
+```
+
+
+# Socialization Analyses
+## Individual Substance Tables for Intercepts and Slopes
+```{r}
+
+# switched the pooled SD used for calculating Cohen's d to the SD of the random effect intercept variance as opposed to the SD of the individual intercept values since it was larger and provided more reasonable effect size estimates
+
+mods.gen.d <- nested.mods %>%
+  select(pred, weighted, mod, pool) %>%
+  unnest(pool) %>%
+  filter(term == "\\tau_{00}") %>%
+  mutate(new_sd = sqrt(Estimate)) %>%
+  select(pred, weighted, mod, new_sd) %>%
+  left_join(nested.mods %>% unnest(pool) %>% filter(type == "fixeff") %>% select(pred, weighted, mod, term, Estimate)) %>%
+  mutate(new_d = Estimate/new_sd) %>%
+  right_join(nested.mods %>% select(pred, weighted, mod, pool) %>% unnest(pool)) %>%
+  group_by(pred, weighted, mod) %>%
+  nest() %>%
+  rename(pool = data) %>%
+  left_join(nested.mods %>% select(-pool)) %>%
+  ungroup() %>% select(pred, weighted, mod, pool, pooled_hyp)
+
+
+# this is only  general substance & weighted - other substances and all unweighted tables were done the same way
+
+d_slope_gen <- mods.gen.d %>% dplyr::select(pred, mod, weighted, pool) %>% unnest(pool) %>%
+  filter(grepl(":", term))%>%
+  filter(weighted == "weighted") %>% 
+  filter((pred %in% c("CESD", "SelfEstm") & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad")) %>%
+  mutate(term.type = ifelse(grepl("2", term) == T, "Quadratic", "Linear"),
+         sig = ifelse(p < .05, "sig", "ns")) %>%
+  dplyr::select(pred, new_d, term.type, sig)
+
+
+slopes.tab_gen <- mods.gen.d %>% dplyr::select(pred, mod, weighted, pooled_hyp) %>% unnest(pooled_hyp) %>%
+  separate(term, c("group", "term")) %>%
+  filter(weighted == "weighted") %>% 
+  filter((pred %in% c("CESD", "SelfEstm" ) & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad"))  %>%
+  filter(grepl("Slope", term)) %>%
+  mutate(term.type = ifelse(grepl("2", term) == T, "Quadratic", "Linear")) %>%
+  full_join(d_slope_gen) %>%
+  mutate_at(vars(new_d, Estimate:upr), funs(ifelse(!is.na(.) == T, sprintf("%.2f", .), ""))) %>%
+  mutate(d = ifelse(sig == "sig", new_d, new_d),
+         CI = sprintf("[%s, %s]", lwr, upr)) %>%
+  dplyr::select(pred, group, Estimate, d, term.type, CI) %>%
+  rename(b = Estimate) %>%
+  gather(key = est, value = value, b, CI, d, na.rm = T) %>%
+  distinct(pred, est, value, .keep_all = T) %>%
+  unite(tmp, group, est, sep = ".") %>%
+  mutate(tmp = factor(tmp)) %>%
+  spread(key = tmp, value = value)
+
+
+
+#intercepts
+
+d_int_gen <- mods.gen.d %>% dplyr::select(pred, mod, weighted, pool) %>% unnest(pool) %>%
+  filter(term %in% "groupsUD") %>%
+  filter(weighted == "unweighted") %>% 
+  filter((pred %in% c("SelfEstm") & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek", "CESD") & mod == "quad"))  %>%
+  mutate(sig = ifelse(p < .05, "sig", "ns")) %>%
+  dplyr::select(pred, new_d, sig)
+
+int.tab_gen <- mods.gen.d %>% dplyr::select(pred, mod, weighted, pooled_hyp) %>% unnest(pooled_hyp) %>%
+  separate(term, c("group", "term")) %>%
+  filter(weighted == "unweighted") %>% 
+  filter((pred %in% c("CESD", "SelfEstm" ) & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad"))  %>%
+  filter(grepl("Int", term)) %>%
+  full_join(d_int_gen) %>%
+  mutate_at(vars(Estimate:upr, new_d), funs(ifelse(!is.na(.) == T, sprintf("%.2f", .), ""))) %>%
+  mutate(d = ifelse(sig == "sig", new_d, new_d),
+         CI = sprintf("[%s, %s]", lwr, upr)) %>%
+  dplyr::select(pred, group, Estimate, d, CI) %>%
+  rename(b = Estimate) %>%
+  gather(key = est, value = value, b, CI, d, na.rm = T) %>%
+  distinct(pred, est, value, .keep_all = T) %>%
+  unite(tmp, group, est, sep = ".") %>%
+  mutate(tmp = factor(tmp)) %>%
+  spread(key = tmp, value = value)
+
+```
+## All Together Intercept Tables
+```{r}
+# combine weighted and unweighted 
+
+int_tab_gen <- rbind(int.tab_gen, int.tab_gen_uw)
+int_tab_alc <- rbind(int.tab_alc, int.tab_alc_uw)
+int_tab_cig <- rbind(int.tab_cig, int.tab_cig_uw)
+int_tab_coke <- rbind(int.tab_coke, int.tab_coke_uw)
+int_tab_halluc <- rbind(int.tab_halluc, int.tab_halluc_uw)
+int_tab_mar <- rbind(int.tab_mar, int.tab_mar_uw)
+int_tab_SH <- rbind(int.tab_SH, int.tab_SH_uw)
+int_tab_UD <- rbind(int.tab_UD, int.tab_UD_uw)
+
+
+int_tab_gen <- int_tab_gen %>%
+  rename(`Abstainer Estimate` = NoDrugs.b, `Abstainer CI` = NoDrugs.CI, `User Estimate` = Drugs.b, `User CI` = Drugs.CI)
+
+int_tab_alc <- int_tab_alc %>%
+  rename(`Abstainer Estimate` = NoAlc.b, `Abstainer CI` = NoAlc.CI, `User Estimate` = Alcohol.b, `User CI` = Alcohol.CI)
+
+int_tab_cig <- int_tab_cig %>%
+  rename(`Abstainer Estimate` = NoCig.b, `Abstainer CI` = NoCig.CI, `User Estimate` = Cig.b, `User CI` = Cig.CI)
+
+int_tab_coke <- int_tab_coke %>%
+  rename(`Abstainer Estimate` = NoCoke.b, `Abstainer CI` = NoCoke.CI, `User Estimate` = Coke.b, `User CI` = Coke.CI)
+
+int_tab_halluc <- int_tab_halluc %>%
+  rename(`Abstainer Estimate` = NoHalluc.b, `Abstainer CI` = NoHalluc.CI, `User Estimate` = Halluc.b, `User CI` = Halluc.CI)
+
+int_tab_mar <- int_tab_mar %>%
+  rename(`Abstainer Estimate` = NoMar.b, `Abstainer CI` = NoMar.CI, `User Estimate` = Mar.b, `User CI` = Mar.CI)
+
+int_tab_SH <- int_tab_SH %>%
+  rename(`Abstainer Estimate` = NoSH.b, `Abstainer CI` = NoSH.CI, `User Estimate` = SH.b, `User CI` = SH.CI)
+
+int_tab_UD <- int_tab_UD %>%
+  rename(`Abstainer Estimate` = NoUD.b, `Abstainer CI` = NoUD.CI, `User Estimate` = UD.b, `User CI` = UD.CI)
+
+
+int_full_table <- rbind(int_tab_gen, int_tab_alc, int_tab_cig, int_tab_coke, int_tab_halluc, int_tab_mar, int_tab_SH, int_tab_UD)
+
+
+int_full_table %>%
+  select(pred, w.NonUser.b, w.NonUser.CI, w.User.b, w.User.CI, w.d, uw.NonUser.b, uw.NonUser.CI, uw.User.b, uw.User.CI, uw.d) %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new)) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "Estimate", "CI", "Estimate", "CI", "<em>d<em>", "Estimate", "CI", "Estimate", "CI", "<em>d<em>"),
+  caption = "<strong>Table xx</strong><br><em>Intercept Estimates of Personality for Users and Non-Users of Substances at Age 14</em>") %>%
+  kable_styling(full_width = F, "condensed") %>%
+  pack_rows("General Substance Use", 1, 4) %>%
+  pack_rows("Alcohol", 5, 8) %>%
+  pack_rows("Cigarettes", 9, 12) %>%
+  pack_rows("Cocaine", 13, 16) %>%
+  pack_rows("Hallucinogens", 17, 20) %>%
+  pack_rows("Marijuana", 21, 24) %>%
+  pack_rows("Inhalants", 25, 28) %>%
+  pack_rows("Downers", 29, 32) %>%
+    column_spec(2, border_left = T) %>%
+    column_spec(6, border_right = T) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  add_header_above(c("Model Type" = 1, "Non-Users" = 2, "Users" = 2, "", "Non-Users" = 2, "Users" = 2, "")) %>%
+  add_header_above(c("", "Weighted" = 5, "Unweighted" = 5)) %>%
+  column_spec(1, width = "20em") %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(6, width = "6em") %>%
+  column_spec(7, width = "8em") %>%
+  column_spec(11, width = "6em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significant between-group difference.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+```
+## All Together Slope Tables
+```{r}
+# had to group up 3, 3, and 2 substances together so tables were clean and not too busy
+
+all.slopes.tab.gen <- rbind(slopes.tab_gen, slopes.tab_gen_uw)
+all.slopes.tab.alc <- rbind(slopes.tab_alc, slopes.tab_alc_uw)
+all.slopes.tab.cig <- rbind(slopes.tab_cig, slopes.tab_cig_uw)
+
+
+# restructure dataframe so weighted and unweighted are side by side & bold significant results
+
+trial1 <- cbind(all.slopes.tab.gen[c(1:8),], all.slopes.tab.gen[c(9:16), c(3:7)])
+colnames(trial1) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+trial1 <- trial1 %>%
+  mutate_at(vars(w.User.b:uw.NonUser.CI), ~ifelse(pred == "SensSeek" & term.type == "Quadratic", sprintf("<strong>%s</strong>", .), .))
+  
+
+trial2 <- cbind(all.slopes.tab.alc[c(1:8),], all.slopes.tab.alc[c(9:16), c(3:7)])
+colnames(trial2) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+
+
+trial3 <- cbind(all.slopes.tab.cig[c(1:8),], all.slopes.tab.cig[c(9:16), c(3:7)])
+colnames(trial3) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+trial3<- trial3 %>%
+  mutate_at(vars(w.User.b:uw.NonUser.CI), ~ifelse(term.type == "Quadratic", sprintf("<strong>%s</strong>", .), .))
+  
+
+# combine individual bolded dataframes
+table_a <- cbind(trial1, trial2, trial3)
+
+
+p_names <- tibble(
+  old = c("Impls", "SensSeek", "CESD", "SelfEstm"),
+  new = c("Impulsivity", "Sensation-Seeking", "Depression", "Self-Esteem")
+)
+
+
+table_a %>%
+  select(pred, term.type, w.NonUser.b, w.NonUser.CI, w.User.b, w.User.CI, w.d, uw.NonUser.b, uw.NonUser.CI, uw.User.b, uw.User.CI, uw.d) %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new)) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "", "Estimate", "CI", "Estimate", "CI", "<em>d<em>", "Estimate", "CI", "Estimate", "CI", "<em>d<em>"),
+  caption = "<strong>Table 4</strong><br><em>Slope Estimates for Personality Trajectories Across Adolescence: General Substance Use, Alcohol, Cigarettes</em>") %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("General Substance Use", 1, 8) %>%
+  pack_rows("Alcohol", 9, 16) %>%
+  pack_rows("Cigarettes", 17, 24) %>%
+    column_spec(3, border_left = T) %>%
+    column_spec(7, border_right = T) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  add_header_above(c("Model Type" = 2, "Non-Users" = 2, "Users" = 2, "", "Non-Users" = 2, "Users" = 2, "")) %>%
+  add_header_above(c("", "", "Weighted" = 5, "Unweighted" = 5)) %>%
+  column_spec(1, width = "15em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(8, width = "10em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significant between-group difference.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+
+
+# next 3
+
+all.slopes.tab.coke <- rbind(slopes.tab_coke, slopes.tab_coke_uw)
+all.slopes.tab.halluc <- rbind(slopes.tab_halluc, slopes.tab_halluc_uw)
+all.slopes.tab.mar <- rbind(slopes.tab_mar, slopes.tab_mar_uw)
+
+
+# restructure dataframe so weighted and unweighted are side by side & bold significant results
+
+trial4 <- cbind(all.slopes.coke.gen[c(1:8),], all.slopes.coke.gen[c(9:16), c(3:7)])
+colnames(trial4) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+trial4 <- trial4 %>%
+  mutate_at(vars(w.User.b:uw.NonUser.CI), ~ifelse(pred == "SensSeek" & term.type == "Quadratic", sprintf("<strong>%s</strong>", .), .))
+  
+
+trial5 <- cbind(all.slopes.halluc.gen[c(1:8),], all.slopes.halluc.gen[c(9:16), c(3:7)])
+colnames(trial5) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+trial5 <- trial5 %>%
+  mutate_at(vars(w.User.b:uw.NonUser.CI), ~ifelse(pred == "Impls", sprintf("<strong>%s</strong>", .), .))
+  
+
+trial6 <- cbind(all.slopes.mar.gen[c(1:8),], all.slopes.mar.gen[c(9:16), c(3:7)])
+colnames(trial6) <- c("pred", "term.type", "w.User.b", "w.User.CI", "w.d", "w.NonUser.b", "w.NonUser.CI", "uw.User.b", "uw.User.CI", "uw.d", "uw.NonUser.b", "uw.NonUser.CI")
+trial6 <- trial6 %>%
+  mutate_at(vars(uw.User.b:uw.NonUser.CI), ~ifelse(pred == "SelfEstm" & term.type  == "Quadratic", sprintf("<strong>%s</strong>", .), .))
+
+
+# combine individual bolded dataframes
+table_b <- rbind(trial4, trial5, trial6)
+
+
+table_b %>%
+  select(pred, term.type, w.NonUser.b, w.NonUser.CI, w.User.b, w.User.CI, w.d, uw.NonUser.b, uw.NonUser.CI, uw.User.b, uw.User.CI, uw.d) %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new)) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "", "Estimate", "CI", "Estimate", "CI", "<em>d<em>", "Estimate", "CI", "Estimate", "CI", "<em>d<em>"),
+  caption = "<strong>Table 5</strong><br><em>Slope Estimates for Personality Trajectories Across Adolescence: Cocaine, Hallucinogens, Marijuana</em>") %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("General Substance Use", 1, 8) %>%
+  pack_rows("Alcohol", 9, 16) %>%
+  pack_rows("Cigarettes", 17, 24) %>%
+    column_spec(3, border_left = T) %>%
+    column_spec(7, border_right = T) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  add_header_above(c("Model Type" = 2, "Non-Users" = 2, "Users" = 2, "", "Non-Users" = 2, "Users" = 2, "")) %>%
+  add_header_above(c("", "", "Weighted" = 5, "Unweighted" = 5)) %>%
+  column_spec(1, width = "15em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(8, width = "10em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significant between-group difference.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+
+# last 2
+
+all.slopes.tab.SH <- rbind(slopes.tab_SH, slopes.tab_SH_uw)
+all.slopes.tab.UD <- rbind(slopes.tab_UD, slopes.tab_UD_uw)
+
+
+# restructure dataframe so weighted and unweighted are side by side & bold significant results
+
+trial7 <- cbind(all.slopes.SH.gen[c(1:8),], all.slopes.SH.gen[c(9:16), c(3:7)])
+colnames(trial7) <- c("pred", "term.type", "w.NonUser.b", "w.NonUser.CI", "w.d", "w.User.b", "w.User.CI", "uw.NonUser.b", "uw.NonUser.CI", "uw.d", "uw.User.b", "uw.User.CI")
+trial7 <- trial7 %>%
+  mutate_at(vars(w.NonUser.b:w.User.CI), ~ifelse(pred == "Impls", sprintf("<strong>%s</strong>", .), .))
+  
+
+trial8 <- cbind(all.slopes.UD.gen[c(1:8),], all.slopes.UD.gen[c(9:16), c(3:7)])
+colnames(trial8) <- c("pred", "term.type", "w.NonUser.b", "w.NonUser.CI", "w.d", "w.User.b", "w.User.CI", "uw.NonUser.b", "uw.NonUser.CI", "uw.d", "uw.User.b", "uw.User.CI")
+trial8 <- trial8 %>%
+  mutate_at(vars(w.NonUser.b:uw.User.CI), ~ifelse(pred == "Impls", sprintf("<strong>%s</strong>", .), .))
+
+
+# combine individual bolded dataframes
+table_c <- rbind(trial7, trial8)
+
+
+table_c %>%
+  select(pred, term.type, w.NonUser.b, w.NonUser.CI, w.User.b, w.User.CI, w.d, uw.NonUser.b, uw.NonUser.CI, uw.User.b, uw.User.CI, uw.d) %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new)) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "", "Estimate", "CI", "Estimate", "CI", "<em>d<em>", "Estimate", "CI", "Estimate", "CI", "<em>d<em>"),
+  caption = "<strong>Table 6</strong><br><em>Slope Estimates for Personality Trajectories Across Adolescence: Inhalants, Downers</em>") %>%
+  kable_styling(full_width = F) %>%
+  pack_rows("Inhalants", 1, 8) %>%
+  pack_rows("Downers", 9, 16) %>%
+    column_spec(3, border_left = T) %>%
+    column_spec(7, border_right = T) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  add_header_above(c("Model Type" = 2, "Non-Users" = 2, "Users" = 2, "", "Non-Users" = 2, "Users" = 2, "")) %>%
+  add_header_above(c("", "", "Weighted" = 5, "Unweighted" = 5)) %>%
+  column_spec(1, width = "15em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(8, width = "10em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significant between-group difference.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+```
+## All Together End Intercepts
+```{r}
+# combine weighted and unweighted 
+
+end_int_tab_gen <- cbind(int.tab_gen_end, int.tab_gen_end_uw)
+
+end_int_tab_alc <- cbind(int.tab_alc_end, int.tab_alc_end_uw)
+
+end_int_tab_cig <- cbind(int.tab_cig_end, int.tab_cig_end_uw)
+
+end_int_tab_coke <- cbind(int.tab_coke_end, int.tab_coke_end_uw)
+
+end_int_tab_halluc <- cbind(int.tab_halluc_end, int.tab_halluc_end_uw)
+
+end_int_tab_mar <- cbind(int.tab_mar_end, int.tab_mar_end_uw)
+
+end_int_tab_SH <- cbind(int.tab_SH_end, int.tab_SH_end_uw)
+
+end_int_tab_UD <- cbind(int.tab_UD_end, int.tab_UD_end_uw)
+
+
+
+colnames(end_int_tab_cig) <- c("pred", "w.NonUser.b", "w.NonUser.CI", "w.d", "w.User.b", "w.User.CI", "uw.NonUser.b", "uw.NonUser.CI", "uw.d", "uw.User.b", "uw.User.CI")
+
+end_int_tab_cig <- end_int_tab_cig %>%
+  mutate_at(vars(!pred), ~ifelse(pred == "Impls" | pred == "SensSeek" | pred == "CESD" | pred == "SelfEstm", sprintf("<strong>%s</strong>", .), .))
+
+
+
+end_int_full_table <- rbind(end_int_tab_gen, end_int_tab_alc, end_int_tab_cig, end_int_tab_coke, end_int_tab_halluc, end_int_tab_mar, end_int_tab_SH, end_int_tab_UD)
+
+
+end_int_full_table %>%
+  select(pred, w.NonUser.b, w.NonUser.CI, w.User.b, w.User.CI, w.d, uw.NonUser.b, uw.NonUser.CI, uw.User.b, uw.User.CI, uw.d) %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new)) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c", "c", "c", "c", "c", "c", "c", "c", "c"),
+  col.names = c("", "Estimate", "CI", "Estimate", "CI", "<em>d<em>", "Estimate", "CI", "Estimate", "CI", "<em>d<em>"),
+  caption = "<strong>Table xx</strong><br><em>Intercept Estimates of Personality for Users and Non-Users of Substances at Age 24</em>") %>%
+  kable_styling(full_width = F, "condensed") %>%
+  pack_rows("General Substance Use", 1, 4) %>%
+  pack_rows("Alcohol", 5, 8) %>%
+  pack_rows("Cigarettes", 9, 12) %>%
+  pack_rows("Cocaine", 13, 16) %>%
+  pack_rows("Hallucinogens", 17, 20) %>%
+  pack_rows("Marijuana", 21, 24) %>%
+  pack_rows("Inhalants", 25, 28) %>%
+  pack_rows("Downers", 29, 32) %>%
+    column_spec(2, border_left = T) %>%
+    column_spec(6, border_right = T) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  add_header_above(c("Model Type" = 1, "Non-Users" = 2, "Users" = 2, "", "Non-Users" = 2, "Users" = 2, "")) %>%
+  add_header_above(c("", "Weighted" = 5, "Unweighted" = 5)) %>%
+  column_spec(1, width = "20em") %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(6, width = "6em") %>%
+  column_spec(7, width = "8em") %>%
+  column_spec(11, width = "6em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significant between-group difference.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+```
+## Graphs for Trajectories
+```{r}
+#general substance use shown as an example
+
+fe_paper <- 
+  nested.mods %>% select(pred, mod, weighted, pool) %>% unnest(pool) %>%
+  filter(type == "fixeff" & weighted == "weighted")  %>%
+  mutate(term = gsub("\\(", "", term),
+         term = gsub("\\)", "", term),term = gsub("\\^", "", term)) %>%
+    filter((pred %in% c("CESD", "SelfEstm" ) & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad")) %>%
+  mutate(term = str_replace(term, "groups", ""),
+         term = str_replace(term, "Drugs:age02", "age02:Drugs")) %>%
+  arrange(pred, term) %>%
+  dplyr::select(pred, term, Estimate) %>%
+  spread(key = term, value = Estimate) %>%
+  select(pred, Intercept, order(colnames(.))) %>%
+  mutate_all(funs(ifelse(is.na(.), 0, .)))
+
+
+means <- nested.all.sub %>% filter(match_set == "socialization") %>% 
+  unnest(imp.data.long) %>%
+  gather(key = pred, value = value, CESD:Impls) %>%
+  group_by(pred) %>%
+  summarize(t.T1_value = mean(value, na.rm = T))
+
+
+test_paper <- crossing(pred = unique(fe_paper$pred), 
+                 mod = c("Linear", "Quadratic")) %>%
+    filter((pred %in% c("CESD", "SelfEstm" ) & mod == "Quadratic") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "Quadratic")) %>%
+  full_join(crossing(pred = unique(fe_paper$pred),
+            t.Intercept = 1, t.age0 = seq(-4,10,.05)/5, t.groupsDrugs = c(0,1))) %>%
+  mutate(t.age2 = ifelse(mod == "linear", 0, t.age0^2)) %>%
+  mutate(`t.age0:groupsDrugs` = t.groupsDrugs*t.age0,
+         `t.age2:groupsDrugs` = t.groupsDrugs*`t.age2`) %>%
+  full_join(means) %>%
+  select(pred, t.Intercept, order(colnames(.)), -mod)
+
+fe_slopes_paper <- fe_paper %>% full_join(test_paper)
+
+
+pv_fun <- function(df, vcov_mat){
+  if(sum(grepl("age02", colnames(vcov_mat))) == 0){
+    df <- df %>% select(-contains("age2"))
+  }
+  vcov_mat <- vcov_mat[sort(rownames(vcov_mat)),sort(colnames(vcov_mat))]
+  df <- as.matrix(data.frame(unclass(df %>% select(contains("t.")))))
+  df <- df[,sort(colnames(df))]
+  diag(df %*% vcov_mat %*% t(df))
+}
+
+comb_fun <- function(df, pv){
+  df$predvar <- pv
+  return(df)
+}
+
+
+
+te_paper <- fe_slopes_paper %>%
+  group_by(pred) %>%
+  nest() %>%
+  full_join(nested.mods %>% 
+  filter(weighted == "weighted")  %>% 
+    filter((pred %in% c("CESD", "SelfEstm" ) & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad")) %>%
+    select(pred, pooled_vcov)) %>%
+  mutate(predvar = map2(data, pooled_vcov, pv_fun),
+         data = map2(data, predvar, comb_fun)) %>%
+  select(-predvar) %>%
+  unnest(data)
+
+fe_slopes_paper$y <- rowSums((fe_slopes_paper %>% select(Intercept:Drugs)) * (fe_slopes_paper %>% select(t.Intercept:t.groupsDrugs)))
+
+fe_sigma_paper <- nested.mods %>% 
+  filter(weighted == "weighted")  %>% 
+    filter((pred %in% c("CESD", "SelfEstm" ) & mod == "quad") | 
+         (pred %in% c("Impls", "SensSeek") & mod == "quad")) %>%
+  select(pred, mod, weighted, pool) %>%
+  unnest(pool) %>% 
+  filter(term == "\\hat{\\sigma^2}") %>% 
+  select(pred, Estimate)
+
+fe_slopes_paper <- fe_slopes_paper %>%
+  full_join(te_paper) %>%
+  full_join(fe_sigma_paper) %>% 
+  mutate(Group = ifelse(t.groupsDrugs == 1, "User", "Non-User")) %>% 
+  select(pred, t.age0, Group, y, predvar, Estimate)
+
+fe_slopes_paper$SE <- sqrt(fe_slopes_paper$predvar)
+fe_slopes_paper$SE2 <- sqrt(fe_slopes_paper$predvar+fe_slopes_paper$Estimate)
+
+fe_slopes_paper <- unique(fe_slopes_paper %>% select(pred, t.age0, Group, y, SE))
+
+
+range_act_paper <- fe_slopes_paper %>%
+  group_by(pred) %>%
+  summarize(min = min(y) -.5, max = max(y) + .5) %>%
+  gather(key = est, value = y, min, max) %>%
+  mutate(t.age0 = y) %>% select(-est)
+
+
+fe_slopes_paper <- fe_slopes_paper %>%
+    mutate(pred = plyr::mapvalues(pred, from = p_names$old, to = p_names$new),
+         pred = factor(pred, levels = p_names$new))
+
+
+fe_slopes_paper %>% 
+  filter(pred == "Self-Esteem") %>%
+  group_by(pred) %>% mutate(z = as.numeric(scale(y))) %>%
+  ggplot(aes(x = t.age0*5+(14), y = y)) +
+    scale_x_continuous(limits = c(14,24), breaks = seq(14,24,2)) +
+  scale_y_continuous(limits = c(2.2,2.5), breaks = seq(2.2,2.5,.1)) +
+    geom_ribbon(aes(ymin=y-2*SE,ymax=y+2*SE, group = Group),alpha=0.25,fill="gray") +
+    geom_line(aes(linetype = Group, group = Group),size = 1.2) + 
+    geom_blank(data = range_act_paper) +
+    labs(x = "Age", y = "Predicted Rating", color = "Group") +
+    #facet_wrap( ~ pred, nrow = 2, scales = "free") +
+    theme_bw() + 
+  ggtitle("Trajectory of Self-Esteem for General Substance Users and Non-Users") +
+    theme(axis.text = element_text(face = "bold", size = rel(1)),
+          axis.title = element_text(face = "bold", size = rel(1.1)),
+          strip.text = element_text(face = "bold", size = rel(1.2)),
+          legend.text = element_text(face = "bold"),
+          legend.title = element_text(face = "bold", size = rel(1.2)),
+          legend.position = "bottom",
+          plot.title = element_text(face = "bold", size = rel(1.1), hjust = .5))
+```
+
+
+# Other Tables
+## Demographics
+```{r}
+# reminder of where the dataframes used in these tables came from
+
+demo_match <- match_full_MI %>%
+  dplyr::select(PROC_CID, PROC_MID, Dem_DOBYear, DemCSex, DemRace, groups, CESD, Impls, SensSeek, SelfEstm) %>%
+  left_join(group_demo_wide)
+
+demo_match$DemCSex <- as.factor(demo_match$DemCSex)
+
+demo_match %>% count(DemRace)
+
+# demographics (N, sex, race, age 2020) by all 8 drug groups
+
+raw_group_diff <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(DrugYes == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+raw_group_diff_alc <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(Alcohol == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+    summarize(n = n(),
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`) 
+
+raw_group_diff_cig <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(Cig == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+raw_group_diff_coke <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(Coke == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+raw_group_diff_halluc <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(Halluc == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`) 
+
+raw_group_diff_mar <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(Mar == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+raw_group_diff_SH <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(SH == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+raw_group_diff_UD <- tbl_df(demo_match) %>% 
+  mutate(groups = ifelse(UD == 1, "Users", "Non-Users")) %>%
+  group_by(groups) %>%
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)
+
+
+bind_rows(raw_group_diff, raw_group_diff_alc, raw_group_diff_cig, raw_group_diff_coke, raw_group_diff_halluc, raw_group_diff_mar, raw_group_diff_SH, raw_group_diff_UD, demo_match %>% ungroup() %>% 
+  summarize(n = n(), 
+            `% Female` = (sum(DemCSex == 2)/ sum(DemCSex %in% c(1,2))*100),
+            `% White` = (sum(DemRace == 1)/ sum(DemRace %in% c(1:3))*100),
+            `Mean Age` = mean(2020 - Dem_DOBYear, na.rm = T),
+            `SD Age` = sd(2020 - Dem_DOBYear, na.rm = T)) %>%
+  mutate(`Mean Age 2020` = sprintf("%.1f (%.1f)", `Mean Age`, `SD Age`)) %>%
+  select(-`Mean Age`, -`SD Age`)) %>%
+  mutate(groups = ifelse(is.na(groups), "Total", groups)) %>%
+  kable(., "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("Type of Substance", "<em>N<em>", "% Female", "% White", "Age 2020"),
+          caption = "<strong>Table 1</strong><br><em>Basic Demographic Information by Substance Group</em>", align = "c") %>%
+  # kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+    kable_styling(bootstrap_options = c("repeat_header", "condensed"),full_width = F) %>%
+  pack_rows("General Substance Use", 1, 2) %>%
+  pack_rows("Alcohol", 3, 4) %>%
+  pack_rows("Cigarettes", 5, 6) %>%
+  pack_rows("Cocaine", 7, 8) %>%
+  pack_rows("Hallucinogens", 9, 10) %>%
+  pack_rows("Marijuana", 11, 12) %>%
+  pack_rows("Inhalants", 13, 14) %>%
+  pack_rows("Downers", 15, 16) %>%
+  pack_rows("Total", 17, 17) %>%
+  column_spec(1, width = "20em") %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "10em") %>%
+  column_spec(4, width = "12em")
+```
+## Number of Personality Responses by Wave Number & Year
+```{r}
+# number of responses per year 1994-2014 per trait
+trait_by_year <- table(out_long_MI$item, out_long_MI$year)
+
+kable(trait_by_year, "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("0", "1", "2", "3", "4", "5", "6"),
+          caption = "Table xx: Number of Responses for Each Personality Trait by Year", align = "c") %>%
+    kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  pack_rows("Personality Variable", 1, 4) %>%
+  add_header_above(c(" ", "Number of Waves Completed" = 7)) %>%
+  column_spec(1, border_right = T, width = "12em") %>%
+  column_spec(2, width = "4em") %>%
+  column_spec(3, width = "4em") %>%
+  column_spec(4, width = "4em") %>%
+  column_spec(5, width = "4em") %>%
+  column_spec(6, width = "4em") %>%
+  column_spec(7, width = "4em")
+
+
+# number of waves per personality  trait
+
+wave_count <- table(out_long_MI$PROC_CID, out_long_MI$item) %>% as.data.frame()
+
+trait_by_wave <- table(wave_count$Var2, wave_count$Freq)
+
+
+
+kable(trait_by_wave, "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("0", "1", "2", "3", "4", "5", "6"),
+          caption = "Table xx: Number of Waves Completed by Participants for Personality", align = "c") %>%
+    kable_styling(full_width = F) %>%
+  pack_rows("Personality Variable", 1, 4) %>%
+  add_header_above(c(" ", "Number of Waves Completed" = 7)) %>%
+  column_spec(1, border_right = T, width = "12em") %>%
+  column_spec(2, width = "4em") %>%
+  column_spec(3, width = "4em") %>%
+  column_spec(4, width = "4em") %>%
+  column_spec(5, width = "4em") %>%
+  column_spec(6, width = "4em") %>%
+  column_spec(7, width = "4em")
+```
+## Polysubstance Use & Initiation Ages
+```{r}
+# another reminder 
+
+group_demo_wide <- group_wide %>%
+  select(-age, -PROC_MID) %>%
+  group_by(PROC_CID) %>%
+  summarise(Alcohol = max(Alcohol), Cig = max(Cig), Coke = max(Coke), Halluc = max(Halluc), Mar = max(Mar), SH = max(SH), UD = max(UD), DrugYes = max(DrugYes)) %>%
+  left_join(group_wide_ageI %>%
+              select(init_age)) %>%
+  left_join(group_wide %>% select(PROC_CID, DrugYes, groups) %>% unique()) %>%
+  unique()
+
+
+# drug use prevalance
+
+comorbid <- group_demo_wide %>%
+  right_join(match_full_MI %>% select(PROC_CID))
+
+comorbid$Alcohol <- as.integer(comorbid$Alcohol)
+comorbid$Cig <- as.numeric(comorbid$Cig)
+comorbid$Coke <- as.numeric(comorbid$Coke)
+comorbid$Halluc <- as.numeric(comorbid$Halluc)
+comorbid$Mar <- as.numeric(comorbid$Mar)
+comorbid$SH <- as.numeric(comorbid$SH)
+comorbid$UD <- as.numeric(comorbid$UD)
+
+comorbid$row_sum = rowSums(comorbid[,c(10:16)])
+
+comorbid_percent <- comorbid %>%
+  group_by(row_sum) %>%
+  mutate(`% Total` = (n / 8303))
+
+comorbid_percent %>%
+  kable(., "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("Number of Substances Used", "<em>n<em>", "% Total"), align = "c",
+          caption = "<strong>Table xx</strong><br><em>Prevalence of Polysubstance Use in our Sample</em>") %>%
+  # kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+    kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  column_spec(1, width = "16em") %>%
+  column_spec(2, width = "6em") %>%
+  #add_indent(c(1:8)) %>%
+  row_spec(0, align = "c") %>%
+      footnote(general = "n = number of participants in sample (N = 8,303).",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+
+# average initiation ages
+
+init_age_table <- new_PW_data %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+alc_ageI <- new_PW_data_alc %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+cig_ageI <- new_PW_data_cig %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+coke_ageI <- new_PW_data_coke %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+halluc_ageI <- new_PW_data_halluc %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+mar_ageI <- new_PW_data_mar %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+SH_ageI <- new_PW_data_SH %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+UD_ageI <- new_PW_data_UD %>%
+  select(PROC_CID, ageI) %>%
+  unique() %>%
+  summarize(avg_ageI = mean(ageI), SD_ageI = sd(ageI))
+
+init_age_table <- rbind(init_age_table, alc_ageI, cig_ageI, coke_ageI, halluc_ageI, mar_ageI, SH_ageI, UD_ageI)
+sub_names <- c("General Substance Use", "Alcohol", "Cigarettes", "Cocaine", "Hallucinogens", "Marijuana", "Inhalants", "Downers")
+sub_names <- as.data.frame(sub_names)
+
+init_age_table <- cbind(sub_names, init_age_table)
+
+
+init_age_table %>%
+  kable(., "html", #"latex", 
+          escape = F, booktabs = T, digits = 2,
+          col.names = c("Type of Substance", "<em>M<em>", "<em>SD<em>"), align = "c",
+          caption = "<strong>Table xx</strong><br><em>Average Age of Initiation for Each User Group</em>") %>%
+  # kable_styling(latex_options = c("striped","repeat_header"),full_width = F)
+    kable_styling(bootstrap_options = c("striped","repeat_header"),full_width = F) %>%
+  column_spec(1, width = "20em") %>%
+  column_spec(2, width = "9em") %>%
+  #add_indent(c(1:8)) %>%
+  row_spec(0, align = "c") %>%
+      footnote(general = "M = mean. SD = standard deviation.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+```
+## Mean-Level Change
+```{r}
+ML_imp_tab <- tidy(ML_impls, conf.int = T, conf.level = 0.95)[,c(1,3,4,6:8)]
+ML_SS_tab <- tidy(ML_SS, conf.int = T, conf.level = 0.95)[,c(1,3,4,6:8)]
+ML_dep_tab <- tidy(ML_CESD, conf.int = T, conf.level = 0.95)[,c(1,3,4,6:8)]
+ML_SE_tab <- tidy(ML_SE, conf.int = T, conf.level = 0.95)[,c(1,3,4,6:8)]
+
+ML_table <- rbind(ML_imp_tab, ML_SS_tab, ML_dep_tab, ML_SE_tab)
+
+ML_table <- ML_table %>%
+  mutate(CI = sprintf("[%.2f, %.2f]", conf.low, conf.high)) %>%
+  select(-conf.low, -conf.high) %>%
+  mutate(estimate = round(estimate, digits = 2)) 
+
+ML_table <- ML_table %>%
+  mutate_at(vars(estimate, CI), ~ifelse(effect == "fixed" & abs(statistic) > 1.96, sprintf("<strong>%s</strong>", .), .))
+
+ML_table$CI[c(4:7,11:14,18:21,25:28)] <- NA
+
+
+ML_names <- tibble(
+  old = c("(Intercept)", "age0", "age02", "sd__(Intercept)", "sd__age0", "cor__(Intercept).age0", "sd__Observation"),
+  new = c("Intercept", "age0", "age02", "Intercept SD", "Age SD", "Covariance", "Residual Variance")
+)
+
+
+ML_table <- ML_table %>%
+    mutate(term = plyr::mapvalues(term, from = ML_names$old, to = ML_names$new),
+         term = factor(term, levels = ML_names$new))
+
+ML_table$CI <- ML_table$CI %>% replace_na(" ")
+       
+
+ML_table %>%
+  select(term, estimate, CI) %>%
+  kable(., "html", escape = F, booktabs = T, digits = 2, align = c("l", "c", "c"),
+  col.names = c( "Model", "Estimate (<em>b<em>)", "CI"),
+  caption = "<strong>Table xx</strong><br><em>Average Personality Trait Mean-Level Change across Adolescence</em>") %>%
+  kable_styling("condensed", full_width = F) %>%
+  pack_rows("Impulsivity", 1, 7) %>%
+  pack_rows("Sensation-Seeking", 8, 14) %>%
+  pack_rows("Depression", 15, 21) %>%
+  pack_rows("Self-Esteem", 22, 28) %>%
+  column_spec(2, width = "8em") %>%
+  column_spec(3, width = "8em") %>%
+      footnote(general = "CI = 95% confidence interval. Bold values indicate significance.",
+           general_title = "Note.",
+           footnote_as_chunk = T, title_format = c("italic")
+           )
+
+
+```
